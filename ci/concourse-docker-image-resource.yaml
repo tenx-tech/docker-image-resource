@@ -1,0 +1,53 @@
+---
+resource_types:
+  - name: pull-request
+    type: docker-image
+    source:
+      repository: jtarchie/pr
+
+resources:
+  - name: source
+    type: git
+    webhook_token: TENX_DOCKER_IMAGE_RESOURCE_PUSHED_TOKEN
+    source:
+      uri: git@github.com:tenx-tech/docker-image-resource.git
+      private_key: ((tenx-ci-ssh-key))
+      branch: master
+      ignore_paths:
+        - .gitignore
+        - README.md
+
+  - name: mothership
+    type: git
+    webhook_token: TENX_MOTHERSHIP_PUSHED_TOKEN
+    source:
+      repo: tenx-tech/mothership
+      uri: git@github.com:tenx-tech/mothership.git
+      private_key: ((tenx-ci-ssh-key))
+
+  - name: container
+    type: docker-image
+    source:
+      repository: asia.gcr.io/tenx-production/concourse-docker-image-resource
+      username: _json_key
+      password: ((gcr-write-token))
+
+jobs:
+  - name: build-slugs
+    plan:
+      - aggregate:
+          - get: source
+            trigger: true
+          - get: mothership
+
+      - task: build-slugs
+        file: source/ci/tasks/build-slugs.yaml
+        params:
+          TENX_CI_SSH_KEY: ((tenx-ci-ssh-key))
+          CONCOURSE_NIX_REMOTE_SSH_KEY: ((concourse-nix-remote-ssh-key))
+
+      - put: container
+        params:
+          load_file: slugs/concourse-docker-image-resource/slug
+          load_repository: concourse-docker-image-resource
+          tag: slugs/concourse-docker-image-resource/tag

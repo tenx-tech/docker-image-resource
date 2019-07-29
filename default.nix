@@ -1,4 +1,4 @@
-{ buildGoPackage, fetchgitLocal, dockerTools, lib, docker, bash, busybox, cacert, jq, runCommand }:
+{ buildGoPackage, fetchgitLocal, dockerTools, lib, docker, bash, busybox, cacert, jq, runCommand, buildSlugs }:
 let
   check = buildGoPackage {
     name = "concourse-docker-image-resource-check";
@@ -23,9 +23,9 @@ let
     cp ${check}/bin/cmd ./docker-credential-ecr-login
   '';
 
-  image = dockerTools.buildLayeredImage {
+  slug = dockerTools.buildLayeredImage {
     name = "concourse-docker-image-resource";
     tag = "latest";
     contents = [ busybox cacert resources jq docker bash ];
   };
-in image
+in buildSlugs [{ name = "concourse-docker-image-resource"; inherit slug; }]

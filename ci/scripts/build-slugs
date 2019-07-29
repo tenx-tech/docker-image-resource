@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -euox pipefail
+
+nix-build -E "with import $mothership/ci; with callPackage $source {}; slugs"
+cp -r ./result/. $target
+unlink result

@@ -1,0 +1,42 @@
+platform: linux
+
+image_resource:
+  type: docker-image
+  source:
+    repository: asia.gcr.io/tenx-production/nix-docker-worker
+    tag: "31i1nr6p3hldhdra54dsddn0w761fy33"
+    username: _json_key
+    password: ((gcr-write-token))
+
+inputs:
+  - name: source
+  - name: mothership
+
+outputs:
+  - name: slugs
+
+params:
+  TENX_CI_SSH_KEY:
+  CONCOURSE_NIX_REMOTE_SSH_KEY:
+  RUNC_SHIM_CONFIG: |
+    expose_nix_daemon = true
+    [[mount]]
+    destination = "/shared"
+    source = "/shared"
+    type = "bind"
+    options = [ "bind" ]
+
+run:
+  path: bash
+  args:
+    - -ec
+    - |
+      export CONCOURSE_SHARED=`mktemp -d -p /shared concourse-XXXXXX`
+      chmod -R a+rwX $CONCOURSE_SHARED
+      trap "rm -rf $CONCOURSE_SHARED" EXIT TERM KILL
+
+      export mothership="$(pwd)/mothership"
+      export source="$(pwd)/source"
+      export target="$(pwd)/slugs"
+      cd $mothership/ci/scripts
+      ./entrypoint $source/ci/scripts/build-slugs
