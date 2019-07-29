@@ -67,6 +67,7 @@ build_args=$(jq -r '.params.build_args // {}' < $payload)
 build_args_file=$(jq -r '.params.build_args_file // ""' < $payload)
 labels=$(jq -r '.params.labels // {}' < $payload)
 labels_file=$(jq -r '.params.labels_file // ""' < $payload)
+tag_is_unique=$(jq -r '.params.tag_is_unique // ""' < $payload)
 
 
 tag_name=""
@@ -241,7 +242,7 @@ elif [ -n "$build" ]; then
       # see https://github.com/moby/moby/pull/32677
       # and https://github.com/awslabs/amazon-ecr-credential-helper/issues/9
       docker pull "${ecr_image}"
-    done    
+    done
   fi
 
   docker build -t "${repository}:${tag_name}" "${target[@]}" "${expanded_build_args[@]}" "${expanded_labels[@]}" -f "$dockerfile" $cache_from "$build"
@@ -274,17 +275,29 @@ image_id="$(image_from_tag "$repository" "$tag_name")"
 
 # careful to not let 'tee' mask exit status
 
-{
-  if ! docker push "${repository}:${tag_name}"; then
-    touch /tmp/push-failed
-  fi
-} | tee push-output
 
-if [ -e /tmp/push-failed ]; then
-  exit 1
+if [[ "${tag_is_unique}" = "true" ]]; then
+  manifest="$(docker manifest inspect -v "${repository}:${tag_name}" || :)"
+  digest="$(jq -r '.Descriptor.digest // ""' <<< "${manifest}")"
+else
+  digest=""
 fi
 
-digest="$(grep 'digest' push-output | awk '{print $3}')"
+if [[ -z "${digest}" ]]; then
+  {
+    if ! docker push "${repository}:${tag_name}"; then
+      touch /tmp/push-failed
+    fi
+  } | tee push-output
+
+  if [ -e /tmp/push-failed ]; then
+    exit 1
+  fi
+
+  digest="$(grep 'digest' push-output | awk '{print $3}')"
+else
+  echo "Skipped as image already exists remotely."
+fi
 
 if [ "$need_tag_as_latest" = "true" ] && [ "${tag_name}" != "latest"  ]; then
   docker tag "${repository}:${tag_name}" "${repository}:latest"

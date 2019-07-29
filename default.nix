@@ -1,13 +1,4 @@
 { buildGoPackage, fetchgitLocal, dockerTools, lib, docker, bash, busybox, cacert, jq, runCommand }:
-  # slug = dockerTools.buildImage {
-  #   inherit name;
-  #   tag = "latest";
-  #   fromImage = null;
-  #   contents = [ bin bash cacert ];
-  #   config = {
-  #     Cmd = [ "/bin/${name}" ];
-  #   };
-  # };
 let
   check = buildGoPackage {
     name = "concourse-docker-image-resource-check";

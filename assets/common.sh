@@ -97,6 +97,8 @@ start_docker() {
     echo Docker failed to start within ${STARTUP_TIMEOUT} seconds.
     return 1
   fi
+  mkdir -p ~/.docker
+  echo '{"experimental": "enabled"}' >> ~/.docker/config.json
 }
 
 stop_docker() {
@@ -117,7 +119,7 @@ log_in() {
     echo "${password}" | docker login -u "${username}" --password-stdin ${registry}
   else
     mkdir -p ~/.docker
-    echo '{"credsStore":"ecr-login"}' >> ~/.docker/config.json
+    echo '{"experimental": "enabled","credsStore":"ecr-login"}' >> ~/.docker/config.json
   fi
 }
 
