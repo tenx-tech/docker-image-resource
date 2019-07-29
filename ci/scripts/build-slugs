@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euox pipefail
 
-nix-build -E "with import $mothership/ci; with callPackage $source {}; slugs"
+nix-build -E "with import $mothership/ci; callPackage $source {}"
 cp -r ./result/. $target
 unlink result
