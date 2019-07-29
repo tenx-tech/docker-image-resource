@@ -17,10 +17,12 @@ let
     cp -r ${check}/bin/. ./.
     cp -r ${./assets}/. ./.
     patchShebangs .
+    chmod +x ./*
 
     mkdir -p $out/bin
     cd $out/bin
     cp ${check}/bin/cmd ./docker-credential-ecr-login
+    chmod +x ./*
   '';
 
   slug = dockerTools.buildLayeredImage {
