@@ -1,4 +1,7 @@
-{ buildGoPackage, fetchgitLocal, dockerTools, lib, docker, bash, busybox, cacert, jq, runCommand, buildSlugs }:
+# This resource is incompatible with `busybox`.
+{ buildGoPackage, fetchgitLocal, dockerTools, lib, docker, bash, cacert, jq,
+  runCommand, coreutils, findutils, utillinux, gawk, gnused, gnugrep, iproute, gnutar,
+  buildSlugs }:
 let
   check = buildGoPackage {
     name = "concourse-docker-image-resource-check";
@@ -6,7 +9,9 @@ let
     subPackages = [ "cmd/check" "cmd/print-metadata" "vendor/github.com/awslabs/amazon-ecr-credential-helper/ecr-login/cmd"];
 
     src = lib.cleanSourceWith {
-      filter = name: type: !lib.hasSuffix ".nix" name;
+      filter = name: type:
+        !lib.hasSuffix ".nix" name
+        || (type == "directory" && baseNameOf name == "ci");
       src = lib.cleanSource ./.;
     };
   };
@@ -17,17 +22,19 @@ let
     cp -r ${check}/bin/. ./.
     cp -r ${./assets}/. ./.
     patchShebangs .
-    chmod +x ./*
 
     mkdir -p $out/bin
     cd $out/bin
     cp ${check}/bin/cmd ./docker-credential-ecr-login
-    chmod +x ./*
   '';
 
-  slug = dockerTools.buildLayeredImage {
+  slug = dockerTools.buildImage {
     name = "concourse-docker-image-resource";
     tag = "latest";
-    contents = [ busybox cacert resources jq docker bash ];
+    contents = [ coreutils findutils gawk gnused gnugrep utillinux iproute cacert
+                 resources jq docker bash gnutar ];
   };
-in buildSlugs [{ name = "concourse-docker-image-resource"; inherit slug; }]
+in buildSlugs [{
+  name = "concourse-docker-image-resource";
+  inherit slug;
+}]
